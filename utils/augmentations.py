@@ -40,7 +40,7 @@ class ImgToFloat(object):
         return image.astype(np.float32), masks, boxes, labels
 
 
-class ToAbsoluteCoords(object):
+class ToAbsoluteBox(object):
     def __call__(self, image, masks=None, boxes=None, labels=None):
         height, width, _ = image.shape
         boxes[:, 0] *= width
@@ -51,7 +51,7 @@ class ToAbsoluteCoords(object):
         return image, masks, boxes, labels
 
 
-class ToPercentCoords(object):
+class ToPercentBox(object):
     def __call__(self, image, masks=None, boxes=None, labels=None):
         height, width, channels = image.shape
         boxes[:, 0] /= width
@@ -62,64 +62,26 @@ class ToPercentCoords(object):
         return image, masks, boxes, labels
 
 
-class Pad(object):
-    """
-    Pads the image to the input width and height, filling the
-    background with mean and putting the image in the top-left.
-
-    Note: this expects im_w <= width and im_h <= height
-    """
-
-    def __init__(self, width, height, pad_gt=True):
-        self.width = width
-        self.height = height
-        self.pad_gt = pad_gt
-
-    def __call__(self, image, masks, boxes=None, labels=None):
-        im_h, im_w, depth = image.shape
-
-        expand_image = np.zeros((self.height, self.width, depth), dtype=image.dtype)
-        expand_image[:, :, :] = MEANS
-        expand_image[:im_h, :im_w] = image
-
-        if self.pad_gt:
-            expand_masks = np.zeros((masks.shape[0], self.height, self.width), dtype=masks.dtype)
-            expand_masks[:, :im_h, :im_w] = masks
-            masks = expand_masks
-
-        return expand_image, masks, boxes, labels
-
-
 class Resize(object):
-    """
-    The same resizing scheme as used in faster R-CNN https://arxiv.org/pdf/1506.01497.pdf
-    We resize the image so that the shorter side is min_size.
-    If the longer side is then over img_size, we instead resize the image so the long side is img_size.
-    """
-
     def __init__(self, resize_gt=True):
         self.resize_gt = resize_gt
-        self.img_size = cfg.img_size
 
     def __call__(self, image, masks, boxes, labels=None):
-        img_h, img_w, _ = image.shape
-        width, height = self.img_size, self.img_size
-        image = cv2.resize(image, (width, height))
+        original_h, original_w, _ = image.shape
+        image = cv2.resize(image, (cfg.img_size, cfg.img_size))
 
         if self.resize_gt:
-            # Act like each object is a color channel
             masks = masks.transpose((1, 2, 0))
-            masks = cv2.resize(masks, (width, height))
+            masks = cv2.resize(masks, (cfg.img_size, cfg.img_size))
 
-            # OpenCV resizes a (w,h,1) array to (s,s), so fix that
-            if len(masks.shape) == 2:
+            if len(masks.shape) == 2:  # OpenCV resizes a (w,h,1) array to (s,s), so fix that
                 masks = np.expand_dims(masks, 0)
             else:
                 masks = masks.transpose((2, 0, 1))
 
             # Scale bounding boxes (which are currently absolute coordinates)
-            boxes[:, [0, 2]] *= (width / img_w)
-            boxes[:, [1, 3]] *= (height / img_h)
+            boxes[:, [0, 2]] *= (cfg.img_size / original_w)
+            boxes[:, [1, 3]] *= (cfg.img_size / original_h)
 
         return image, masks, boxes, labels
 
@@ -391,7 +353,7 @@ class Normalize(object):
         # TODO: check if this right
         for i in range(3):
             img[:, :, i] = (img[:, :, i] - np.mean(img[:, :, i])) / (np.std(img[:, :, i]))
-
+        # TODO: do this alone
         img = img[:, :, (2, 1, 0)]  # TO RGB
 
         return img.astype(np.float32), masks, boxes, labels
@@ -403,7 +365,6 @@ class BaseTransform(object):
     def __init__(self):
         self.augment = Compose([ImgToFloat(),
                                 Resize(resize_gt=False),
-                                Pad(cfg.img_size, cfg.img_size, pad_gt=False),
                                 Normalize()])
 
     def __call__(self, img, masks=None, boxes=None, labels=None):
@@ -452,13 +413,12 @@ class SSDAugmentation(object):
     def __init__(self):
         self.augment = Compose([ImgToFloat(),
                                 PhotometricDistort(),  # 50% possibility
-                                ToAbsoluteCoords(),
+                                ToAbsoluteBox(),
                                 RandomSampleCrop(),
                                 Expand(),  # 50% possibility
                                 RandomMirror(),
                                 Resize(),
-                                Pad(cfg.img_size, cfg.img_size),
-                                ToPercentCoords(),
+                                ToPercentBox(),
                                 Normalize()])
 
     def __call__(self, img, masks, boxes, labels):

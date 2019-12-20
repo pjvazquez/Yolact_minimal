@@ -78,8 +78,8 @@ class Config(object):
 
 # ----------------------- DATASETS ----------------------- #
 coco_dataset = Config({'name': 'COCO 2017',
-                       'train_images': '/home/feiyu/Data/coco2017/val2017/',
-                       'train_info': '/home/feiyu/Data/coco2017/annotations/instances_val2017.json',
+                       'train_images': '/home/feiyu/Data/coco2017/train2017/',
+                       'train_info': '/home/feiyu/Data/coco2017/annotations/instances_train2017.json',
                        'valid_images': '/home/feiyu/Data/coco2017/val2017/',
                        'valid_info': '/home/feiyu/Data/coco2017/annotations/instances_val2017.json',
                        'class_names': COCO_CLASSES})
