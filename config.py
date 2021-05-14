@@ -82,11 +82,11 @@ class res101_coco:
             self.weight = args.resume if args.resume else 'weights/resnet101_reducedfc.pth'
         else:
             self.weight = args.weight
-        self.data_root = '/home/feiyu/Data/'
+        self.data_root = '/mnt/DATA-SSD/DataSandbox/'
 
         if self.mode == 'train':
-            self.train_imgs = self.data_root + 'coco2017/train2017/'
-            self.train_ann = self.data_root + 'coco2017/annotations/instances_train2017.json'
+            self.train_imgs = self.data_root + 'coco/train2017/'
+            self.train_ann = self.data_root + 'coco/annotations/instances_train2017.json'
             self.train_bs = args.train_bs
             self.bs_per_gpu = args.bs_per_gpu
             self.val_interval = args.val_interval
@@ -109,8 +109,8 @@ class res101_coco:
             self.masks_to_train = 100
 
         if self.mode in ('train', 'val'):
-            self.val_imgs = self.data_root + 'coco2017/val2017/'
-            self.val_ann = self.data_root + 'coco2017/annotations/instances_val2017.json'
+            self.val_imgs = self.data_root + 'coco/val2017/'
+            self.val_ann = self.data_root + 'coco/annotations/instances_val2017.json'
             self.val_bs = 1
             self.val_num = args.val_num
             self.coco_api = args.coco_api

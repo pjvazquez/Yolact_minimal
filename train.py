@@ -167,11 +167,14 @@ try:  # try-except can shut down all processes after Ctrl + C.
                     writer.add_scalar('mAP/mask_map', mask_row[1], global_step=step)
 
                     save_best(net.module if cfg.cuda else net, mask_row[1], cfg_name, step)
+                # will save model weights
+                save_latest(net.module if cfg.cuda else net, cfg_name, step)
 
             if ((not cfg.cuda) or main_gpu) and step == val_step + 1:
                 timer.start()  # the first iteration after validation should not be included
 
             step += 1
+
             if step >= cfg.lr_steps[-1]:
                 training = False
 
@@ -187,6 +190,7 @@ try:  # try-except can shut down all processes after Ctrl + C.
                 break
 
 except KeyboardInterrupt:
+    print("pasa por aquí")
     if (not cfg.cuda) or main_gpu:
         save_latest(net.module if cfg.cuda else net, cfg_name, step)
 
