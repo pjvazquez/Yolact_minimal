@@ -6,6 +6,7 @@ import torch.distributed as dist
 os.makedirs('results/images', exist_ok=True)
 os.makedirs('results/videos', exist_ok=True)
 os.makedirs('weights/', exist_ok=True)
+os.makedirs('onnx_files/', exist_ok=True)
 os.makedirs('tensorboard_log/', exist_ok=True)
 
 COLORS = np.array([[0, 0, 0], [244, 67, 54], [233, 30, 99], [156, 39, 176], [103, 58, 183], [100, 30, 60],
@@ -44,7 +45,16 @@ PASCAL_CLASSES = ('aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
                   'diningtable', 'dog', 'horse', 'motorbike', 'person',
                   'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor')
 
-CUSTOM_CLASSES = ('dog', 'person', 'bear', 'sheep')
+# selected custom classes for dormakaba specific training
+# total of 36 classes, last 14 from dense pose
+CUSTOM_CLASSES = ('person', 'bicycle', 'cat', 'dog', 'backpack', 'umbrella', 'handbag', 'suitcase', 
+                'sports ball', 'baseball bat', 'skateboard', 'tennis racket', 'bottle', 'wine glass', 
+                'sandwich', 'chair', 'laptop', 'cell phone', 'book', 'clock', 'scissors', 'teddy bear',
+                'torso', 'hand1', 'hand2', 'foot1', 'foot2', 'upleg1', 'upleg2', 'lowleg1', 'lowleg2',
+                'uparm1', 'uparm2', 'lowarm1','lowarm2', 'head')
+
+DENSEPOSE_CLASSES = ('torso', 'hand1', 'hand2', 'foot1', 'foot2', 'upleg1', 'upleg2', 'lowleg1', 'lowleg2',
+                'uparm1', 'uparm2', 'lowarm1','lowarm2', 'head')   
 
 COCO_LABEL_MAP = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8,
                   9: 9, 10: 10, 11: 11, 13: 12, 14: 13, 15: 14, 16: 15, 17: 16,
@@ -82,11 +92,12 @@ class res101_coco:
             self.weight = args.resume if args.resume else 'weights/resnet101_reducedfc.pth'
         else:
             self.weight = args.weight
-        self.data_root = '/mnt/DATA-SSD/DataSandbox/'
+        
+        self.data_root = '/home/ubuntu/dormakaba/coco/'
 
         if self.mode == 'train':
-            self.train_imgs = self.data_root + 'coco/train2017/'
-            self.train_ann = self.data_root + 'coco/annotations/instances_train2017.json'
+            self.train_imgs = self.data_root + 'images/train2017/'
+            self.train_ann = self.data_root + 'annotations/instances_train2017.json'
             self.train_bs = args.train_bs
             self.bs_per_gpu = args.bs_per_gpu
             self.val_interval = args.val_interval
@@ -109,8 +120,8 @@ class res101_coco:
             self.masks_to_train = 100
 
         if self.mode in ('train', 'val'):
-            self.val_imgs = self.data_root + 'coco/val2017/'
-            self.val_ann = self.data_root + 'coco/annotations/instances_val2017.json'
+            self.val_imgs = self.data_root + 'images/val2017/'
+            self.val_ann = self.data_root + 'annotations/instances_val2017.json'
             self.val_bs = 1
             self.val_num = args.val_num
             self.coco_api = args.coco_api
@@ -174,14 +185,35 @@ class res101_custom(res101_coco):
         self.continuous_id = {(aa + 1): (aa + 1) for aa in range(self.num_classes - 1)}
 
         if self.mode == 'train':
-            self.train_imgs = 'custom_dataset/'
-            self.train_ann = 'custom_dataset/custom_ann.json'
-            self.warmup_until = 100  # just an example
-            self.lr_steps = (0, 1200, 1600, 2000)  # just an example
+            self.train_imgs = self.data_root + 'images/train2014/'
+            # self.train_ann = self.data_root + 'annotations/custom_ann_train2014_v06.json'
+            self.train_ann = self.data_root + 'annotations/custom_ann_human_parts_train2014_v06.json'
+            # self.train_ann = self.data_root + 'annotations/custom_ann_non_human_train2014_v06.json'
+            self.warmup_until = 200
+            self.lr_steps = tuple([int(aa / self.bs_factor) for aa in (0, 280000, 560000, 620000, 680000)])
 
         if self.mode in ('train', 'val'):
-            self.val_imgs = ''  # decide by yourself
-            self.val_ann = ''
+            self.val_imgs = self.data_root + 'images/val2014/'
+            # self.val_ann = self.data_root + 'annotations/custom_ann_valid2014_v06.json'
+            self.val_ann = self.data_root + 'annotations/custom_ann_human_parts_valid2014_v06.json'
+            # self.val_ann = self.data_root + 'annotations/custom_ann_non_human_valid2014_v06.json'
+
+class res101_densepose(res101_coco):
+    def __init__(self, args):
+        super().__init__(args)
+        self.class_names = DENSEPOSE_CLASSES
+        self.num_classes = len(self.class_names) + 1
+        self.continuous_id = {(aa + 1): (aa + 1) for aa in range(self.num_classes - 1)}
+
+        if self.mode == 'train':
+            self.train_imgs = self.data_root + 'images/train2014/'
+            self.train_ann = self.data_root + 'annotations/densepose_coco_2014_train.json'
+            self.warmup_until = 200
+            self.lr_steps = tuple([int(aa / self.bs_factor) for aa in (0, 280000, 560000, 620000, 680000)])
+
+        if self.mode in ('train', 'val'):
+            self.val_imgs = self.data_root + 'images/val2014/'
+            self.val_ann = self.data_root + 'annotations/densepose_coco_2014_valminusminival.json'
 
 
 class res50_custom(res101_coco):

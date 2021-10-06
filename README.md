@@ -5,12 +5,17 @@ The original project is [here](https://github.com/dbolya/yolact).
 This implementation simplified the original code, preserved the main function and made the network easy to understand.  
 This implementation has not been updated to Yolact++.  
 
+
+## A new version with swin transformer as backbone is already. TensorRT acceleration is also already. The two branches are gointg to be merged soon. Please check [here](https://github.com/feiyuhuahuo/Yolact_minimal/tree/dev)  
+
 ### The network structure.  
 ![Example 0](readme_imgs/network.png)
 
 ## Environments  
 PyTorch >= 1.1  
 Python >= 3.6  
+onnx  
+onnxruntime-gpu ==1.6.0 for CUDA 10.2  
 tensooardX  
 Other common packages.  
 
@@ -44,6 +49,14 @@ ImageNet pre-trained weights.
 
 ## Train
 ```Shell
+
+- initial train witgh coco dataset
+nohup python -m torch.distributed.launch --nproc_per_node=1 --master_port=$((RANDOM)) train.py --train_bs=8 &
+
+- train with custom dataset and resnet101
+nohup python -m torch.distributed.launch --nproc_per_node=1 --master_port=$((RANDOM)) train.py --train_bs=16 --cfg res101_custom &
+
+
 # Train with resnet101 backbone on one GPU with a batch size of 8 (default).
 python -m torch.distributed.launch --nproc_per_node=1 --master_port=$((RANDOM)) train.py --train_bs=8
 # Train on multiple GPUs (i.e. two GPUs, 8 images per GPU).
@@ -114,6 +127,12 @@ python detect.py --weight=weights/best_30.5_res101_coco_392000.pth --video=video
 ```
 # Use --hide_mask, --hide_score, --save_lincomb, --no_crop and so on to get different results.
 python detect.py --weight=weights/best_30.5_res101_coco_392000.pth --image=images --save_lincomb
+```
+## Transport to ONNX.  
+```
+python export2onnx.py --weight='weights/best_30.5_res101_coco_392000.pth' --opset=12
+# Detect with ONNX file, all the options are the same as those in `detect.py`.
+python detect_with_onnx.py --weight='onnx_files/res101_coco.onnx' --image=images.
 ```
 
 ## Train on PASCAL_SBD datasets

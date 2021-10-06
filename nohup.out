@@ -1,0 +1,73 @@
+
+------------------------------res101_densepose------------------------------
+mode: train
+cuda: True
+gpu_id: 0
+img_size: 550
+class_names: ('torso', 'hand1', 'hand2', 'foot1', 'foot2', 'upleg1', 'upleg2', 'lowleg1', 'lowleg2', 'uparm1', 'uparm2', 'lowarm1', 'lowarm2', 'head')
+num_classes: 15
+scales: [24, 48, 96, 192, 384]
+aspect_ratios: [1, 0.5, 2]
+weight: weights/resnet101_reducedfc.pth
+train_imgs: /home/ubuntu/dormakaba/coco/images/train2014/
+train_ann: /home/ubuntu/dormakaba/coco/annotations/densepose_coco_2014_train.json
+train_bs: 8
+bs_per_gpu: 8
+val_interval: 5000
+bs_factor: 1.0
+lr: 0.001
+warmup_init: 0.0001
+warmup_until: 200
+lr_steps: (0, 280000, 560000, 620000, 680000)
+pos_iou_thre: 0.5
+neg_iou_thre: 0.4
+conf_alpha: 1
+bbox_alpha: 1.5
+mask_alpha: 6.125
+semantic_alpha: 1
+masks_to_train: 100
+val_imgs: /home/ubuntu/dormakaba/coco/images/val2014/
+val_ann: /home/ubuntu/dormakaba/coco/annotations/densepose_coco_2014_valminusminival.json
+val_bs: 1
+val_num: -1
+coco_api: False
+traditional_nms: False
+nms_score_thre: 0.05
+nms_iou_thre: 0.5
+top_k: 200
+max_detections: 100
+
+
+Training from begining, weights initialized with weights/resnet101_reducedfc.pth.
+
+loading annotations into memory...
+Done (t=12.40s)
+creating index...
+index created!
+dataset loaded
+SGD optimizer loaded
+data loader ended
+summary writer ended
+step: 50 | lr: 3.25e-04 | l_class: 2.827 | l_box: 4.437 | l_mask: 4.832 | l_semantic: 0.467 | t_t: 1.148 | t_d: 0.029 | t_fl: 0.393 | t_b: 0.712 | t_u: 0.014 | ETA: 9 days, 0:46:35
+step: 100 | lr: 5.50e-04 | l_class: 2.286 | l_box: 2.996 | l_mask: 3.844 | l_semantic: 0.224 | t_t: 1.173 | t_d: 0.030 | t_fl: 0.401 | t_b: 0.729 | t_u: 0.014 | ETA: 9 days, 5:30:40
+step: 150 | lr: 7.75e-04 | l_class: 2.315 | l_box: 3.988 | l_mask: 4.223 | l_semantic: 0.437 | t_t: 1.211 | t_d: 0.030 | t_fl: 0.412 | t_b: 0.756 | t_u: 0.014 | ETA: 9 days, 12:41:07
+step: 200 | lr: 1.00e-03 | l_class: 2.487 | l_box: 4.011 | l_mask: 5.186 | l_semantic: 0.172 | t_t: 1.240 | t_d: 0.029 | t_fl: 0.421 | t_b: 0.777 | t_u: 0.014 | ETA: 9 days, 18:14:25
+Traceback (most recent call last):
+  File "/home/ubuntu/anaconda3/envs/pytorch_latest_p37/lib/python3.7/multiprocessing/queues.py", line 236, in _feed
+    obj = _ForkingPickler.dumps(obj)
+  File "/home/ubuntu/anaconda3/envs/pytorch_latest_p37/lib/python3.7/multiprocessing/reduction.py", line 51, in dumps
+    cls(buf, protocol).dump(obj)
+_pickle.PicklingError: Can't pickle <class 'numpy.core._exceptions.UFuncTypeError'>: it's not the same object as numpy.core._exceptions.UFuncTypeError
+Traceback (most recent call last):
+  File "/home/ubuntu/anaconda3/envs/pytorch_latest_p37/lib/python3.7/runpy.py", line 193, in _run_module_as_main
+    "__main__", mod_spec)
+  File "/home/ubuntu/anaconda3/envs/pytorch_latest_p37/lib/python3.7/runpy.py", line 85, in _run_code
+    exec(code, run_globals)
+  File "/home/ubuntu/anaconda3/envs/pytorch_latest_p37/lib/python3.7/site-packages/torch/distributed/launch.py", line 340, in <module>
+    main()
+  File "/home/ubuntu/anaconda3/envs/pytorch_latest_p37/lib/python3.7/site-packages/torch/distributed/launch.py", line 326, in main
+    sigkill_handler(signal.SIGTERM, None)  # not coming back
+  File "/home/ubuntu/anaconda3/envs/pytorch_latest_p37/lib/python3.7/site-packages/torch/distributed/launch.py", line 301, in sigkill_handler
+    raise subprocess.CalledProcessError(returncode=last_return_code, cmd=cmd)
+subprocess.CalledProcessError: Command '['/home/ubuntu/anaconda3/envs/pytorch_latest_p37/bin/python', '-u', 'train.py', '--local_rank=0', '--train_bs=8']' died with <Signals.SIGKILL: 9>.
+Killing subprocess 9230
