@@ -20,11 +20,11 @@ from eval import evaluate
 
 parser = argparse.ArgumentParser(description='Yolact Training Script')
 parser.add_argument('--local_rank', type=int, default=None)
-parser.add_argument('--cfg', default='res101_coco', help='The configuration name to use.')
+parser.add_argument('--cfg', default='res101_densepose', help='The configuration name to use.')
 parser.add_argument('--train_bs', type=int, default=8, help='total training batch size')
 parser.add_argument('--img_size', default=550, type=int, help='The image size for training.')
 parser.add_argument('--resume', default=None, type=str, help='The path of the weight file to resume training with.')
-parser.add_argument('--val_interval', default=4000, type=int,
+parser.add_argument('--val_interval', default=5000, type=int,
                     help='The validation interval during training, pass -1 to disable.')
 parser.add_argument('--val_num', default=-1, type=int, help='The number of images for test, set to -1 for all.')
 parser.add_argument('--traditional_nms', default=False, action='store_true', help='Whether to use traditional nms.')
@@ -58,7 +58,9 @@ else:
     start_step = 0
 
 dataset = COCODetection(cfg, mode='train')
+print("dataset loaded")
 optimizer = optim.SGD(net.parameters(), lr=cfg.lr, momentum=0.9, weight_decay=5e-4)
+print("SGD optimizer loaded")
 
 train_sampler = None
 main_gpu = False
@@ -80,6 +82,7 @@ data_loader = data.DataLoader(dataset, cfg.bs_per_gpu, num_workers=cfg.bs_per_gp
 # data_loader = data.DataLoader(dataset, cfg.bs_per_gpu, num_workers=0, shuffle=False,
 #                               collate_fn=train_collate, pin_memory=True)
 
+print("data loader ended")
 epoch_seed = 0
 map_tables = []
 training = True
@@ -88,26 +91,29 @@ step = start_step
 val_step = start_step
 writer = SummaryWriter(f'tensorboard_log/{cfg_name}')
 
+print("summary writer ended")
+
 try:  # try-except can shut down all processes after Ctrl + C.
     while training:
         if train_sampler:
             epoch_seed += 1
             train_sampler.set_epoch(epoch_seed)
-
+        # print("set epoch")
         for images, targets, masks in data_loader:
+            # print("data loader loop warmup")
             if cfg.warmup_until > 0 and step <= cfg.warmup_until:  # warm up learning rate.
                 for param_group in optimizer.param_groups:
                     param_group['lr'] = (cfg.lr - cfg.warmup_init) * (step / cfg.warmup_until) + cfg.warmup_init
-
+            # print("data loader loop param grouups")
             if step in cfg.lr_steps:  # learning rate decay.
                 for param_group in optimizer.param_groups:
                     param_group['lr'] = cfg.lr * 0.1 ** cfg.lr_steps.index(step)
-
+            # print("data loader loop cuda detach")
             if cfg.cuda:
                 images = images.cuda().detach()
                 targets = [ann.cuda().detach() for ann in targets]
                 masks = [mask.cuda().detach() for mask in masks]
-
+            # print("data loader loop counter loss")
             with timer.counter('for+loss'):
                 loss_c, loss_b, loss_m, loss_s = net(images, targets, masks)
 
@@ -115,7 +121,7 @@ try:  # try-except can shut down all processes after Ctrl + C.
                     # use .all_reduce() to get the summed loss from all GPUs
                     all_loss = torch.stack([loss_c, loss_b, loss_m, loss_s], dim=0)
                     dist.all_reduce(all_loss)
-
+            # print("data loader loop backward")
             with timer.counter('backward'):
                 loss_total = loss_c + loss_b + loss_m + loss_s
                 optimizer.zero_grad()
@@ -168,6 +174,9 @@ try:  # try-except can shut down all processes after Ctrl + C.
 
                     save_best(net.module if cfg.cuda else net, mask_row[1], cfg_name, step)
 
+                # will save model weights
+                save_latest(net.module if cfg.cuda else net, cfg_name, step)
+                
             if ((not cfg.cuda) or main_gpu) and step == val_step + 1:
                 timer.start()  # the first iteration after validation should not be included
 

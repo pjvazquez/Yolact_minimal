@@ -49,6 +49,14 @@ ImageNet pre-trained weights.
 
 ## Train
 ```Shell
+
+- initial train witgh coco dataset
+nohup python -m torch.distributed.launch --nproc_per_node=1 --master_port=$((RANDOM)) train.py --train_bs=8 &
+
+- train with custom dataset and resnet101
+nohup python -m torch.distributed.launch --nproc_per_node=1 --master_port=$((RANDOM)) train.py --train_bs=16 --cfg res101_custom &
+
+
 # Train with resnet101 backbone on one GPU with a batch size of 8 (default).
 python -m torch.distributed.launch --nproc_per_node=1 --master_port=$((RANDOM)) train.py --train_bs=8
 # Train on multiple GPUs (i.e. two GPUs, 8 images per GPU).
